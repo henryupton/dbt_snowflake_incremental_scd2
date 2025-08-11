@@ -28,7 +28,6 @@ vars:
     valid_from_column: "_VALID_FROM"
     valid_to_column: "_VALID_TO"
     updated_at_column: "_UPDATED_AT"
-    loaded_at_column: "_LOADED_AT"
     scd_hash_column: "_SCD_HASH"
     # Default valid_to date for current records
     default_valid_to: "2999-12-31 23:59:59+0000"

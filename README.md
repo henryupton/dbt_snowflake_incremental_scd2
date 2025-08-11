@@ -52,7 +52,6 @@ dbt deps
 | `valid_from_column`      | ❌        | `_VALID_FROM`              | Name of the valid from timestamp column                          |
 | `valid_to_column`        | ❌        | `_VALID_TO`                | Name of the valid to timestamp column                            |
 | `updated_at_column`      | ❌        | `_UPDATED_AT`              | Name of the source system timestamp column                       |
-| `loaded_at_column`       | ❌        | `_LOADED_AT`               | Name of the warehouse load timestamp column                      |
 | `scd_hash_column`        | ❌        | `_SCD_HASH`                | Name of the SCD hash column for change detection                 |
 | `default_valid_to`       | ❌        | `2999-12-31 23:59:59+0000` | Default valid_to value for current records                       |
 
@@ -174,7 +173,7 @@ dbt test --select tag:scd2
 
 1. **Missing unique_key**: Ensure you specify `unique_key` in your model config
 2. **Column conflicts**: Audit column names must not exist in your source data
-3. **Data types**: Source `_updated_at` and `_loaded_at` should be timestamp compatible
+3. **Data types**: Source `_updated_at` should be timestamp compatible
 4. **Dependencies**: Ensure dbt-utils is installed via `dbt deps`
 
 ### Debug Mode

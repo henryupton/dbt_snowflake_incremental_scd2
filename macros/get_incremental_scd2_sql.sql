@@ -10,14 +10,12 @@
     {%- set valid_from_col = arg_dict.get('valid_from_column', var('valid_from_column', '_VALID_FROM')) -%}
     {%- set valid_to_col = arg_dict.get('valid_to_column', var('valid_to_column', '_VALID_TO')) -%}
     {%- set updated_at_col = arg_dict.get('updated_at_column', var('updated_at_column', '_UPDATED_AT')) -%}
-    {%- set loaded_at_col = arg_dict.get('loaded_at_column', var('loaded_at_column', '_LOADED_AT')) -%}
     {%- set scd_hash_col = arg_dict.get('scd_hash_column', var('scd_hash_column', '_SCD_HASH')) -%}
     {%- set scd_check_columns = arg_dict.get('scd_check_columns', none) -%}
     {%- set default_valid_to = arg_dict.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
-    {%- set audit_cols_names = [is_current_col, valid_from_col, valid_to_col, updated_at_col, loaded_at_col, scd_hash_col] -%}
+    {%- set audit_cols_names = [is_current_col, valid_from_col, valid_to_col, updated_at_col, scd_hash_col] -%}
 
     {% set updated_at = '"' + updated_at_col + '"' %}
-    {% set loaded_at = '"' + loaded_at_col + '"' %}
 
     {# Prepare column lists for the MERGE statement #}
     {%- set unique_keys_csv = get_quoted_csv(unique_key | map("upper")) -%}
@@ -34,7 +32,6 @@ using (
         new_records as (
             select
                 {{ dest_cols_csv }},
-                {{ loaded_at }},
                 {{ updated_at }},
                 {{ generate_scd_hash(temp_relation, scd_check_columns, audit_cols_names) }} as {{ scd_hash_col }}
             from {{ temp_relation }}
@@ -43,7 +40,6 @@ using (
         previous_record as (
             select
                 {{ dest_cols_csv }},
-                {{ loaded_at }},
                 {{ updated_at }},
                 {{ scd_hash_col }}
             from {{ this }}
@@ -79,7 +75,6 @@ using (
         {{ get_is_current_sql(unique_keys_csv, updated_at) }} as {{ is_current_col }},
         {{ get_valid_from_sql(updated_at) }} as {{ valid_from_col }},
         {{ get_valid_to_sql(unique_keys_csv, updated_at, default_valid_to) }} as {{ valid_to_col }},
-        {{ loaded_at }} as {{ loaded_at_col }},
         {{ updated_at }} as {{ updated_at_col }},
         {{ scd_hash_col }}
     from all_records

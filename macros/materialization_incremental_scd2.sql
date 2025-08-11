@@ -10,7 +10,6 @@
   {%- set valid_from_col = config.get('valid_from_column', var('valid_from_column', '_VALID_FROM')) -%}
   {%- set valid_to_col = config.get('valid_to_column', var('valid_to_column', '_VALID_TO')) -%}
   {%- set updated_at_col = config.get('updated_at_column', var('updated_at_column', '_UPDATED_AT')) -%}
-  {%- set loaded_at_col = config.get('loaded_at_column', var('loaded_at_column', '_LOADED_AT')) -%}
   {%- set scd_hash_col = config.get('scd_hash_column', var('scd_hash_column', '_SCD_HASH')) -%}
   {%- set scd_check_columns = config.get('scd_check_columns', none) -%}
   {%- set default_valid_to = config.get('default_valid_to', var('default_valid_to')) -%}
@@ -39,7 +38,7 @@
     {{ log("Performing initial load for SCD2 table") }}
     
     {# Get audit column names for hash generation #}
-    {%- set audit_columns = [is_current_col, valid_from_col, valid_to_col, updated_at_col, loaded_at_col, scd_hash_col] -%}
+    {%- set audit_columns = [is_current_col, valid_from_col, valid_to_col, updated_at_col, scd_hash_col] -%}
     
     {# Build the argument dictionary for the initial load SQL macro #}
     {%- set initial_load_arg_dict = {
@@ -51,7 +50,6 @@
       'valid_from_column': valid_from_col,
       'valid_to_column': valid_to_col,
       'updated_at_column': updated_at_col,
-      'loaded_at_column': loaded_at_col,
       'scd_hash_column': scd_hash_col,
       'default_valid_to': default_valid_to
     } -%}
@@ -78,7 +76,6 @@
       'valid_from_column': valid_from_col,
       'valid_to_column': valid_to_col,
       'updated_at_column': updated_at_col,
-      'loaded_at_column': loaded_at_col,
       'scd_hash_column': scd_hash_col,
       'scd_check_columns': scd_check_columns,
       'default_valid_to': default_valid_to

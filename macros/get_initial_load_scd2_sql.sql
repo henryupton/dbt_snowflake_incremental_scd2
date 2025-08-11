@@ -9,7 +9,6 @@
     {%- set valid_from_col = arg_dict.get('valid_from_column', var('valid_from_column', '_VALID_FROM')) -%}
     {%- set valid_to_col = arg_dict.get('valid_to_column', var('valid_to_column', '_VALID_TO')) -%}
     {%- set updated_at_col = arg_dict.get('updated_at_column', var('updated_at_column', '_UPDATED_AT')) -%}
-    {%- set loaded_at_col = arg_dict.get('loaded_at_column', var('loaded_at_column', '_LOADED_AT')) -%}
     {%- set scd_hash_col = arg_dict.get('scd_hash_column', var('scd_hash_column', '_SCD_HASH')) -%}
     {%- set default_valid_to = arg_dict.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
 
@@ -30,7 +29,6 @@ select
   {{ get_valid_from_sql(updated_at_col) }} as {{ valid_from_col }},
   {{ get_valid_to_sql(unique_keys_csv, updated_at_col, default_valid_to) }} as {{ valid_to_col }},
   {{ updated_at_col }} as {{ updated_at_col }},
-  {{ loaded_at_col }} as {{ loaded_at_col }},
   {{ generate_scd_hash(temp_relation, scd_check_columns, audit_columns) }} as {{ scd_hash_col }}
 from source_data
 
