@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: test_scd2_basic
+    description: "Test basic SCD2 functionality with default column names"
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_initial_load')
+          compare_columns:
+            - customer_id
+            - customer_name
+            - email
+            - status
+            - _IS_CURRENT
+            - _VALID_FROM
+            - _VALID_TO
+            - _UPDATED_AT
+            - _CHANGE_TYPE
+
+  - name: test_scd2_custom_columns
+    description: "Test SCD2 functionality with custom column names"
+    columns:
+      - name: customer_id
+        description: "Unique identifier for customer"
+        tests:
+          - not_null
+      - name: IS_CURRENT_RECORD
+        description: "Flag indicating if this is the current version"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: EFFECTIVE_FROM
+        description: "When this version became effective"
+        tests:
+          - not_null
+      - name: EFFECTIVE_TO
+        description: "When this version expired"
+        tests:
+          - not_null
+      - name: RECORD_CHANGE_TYPE
+        description: "Type of change operation (I, U, D)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['I', 'U', 'D']

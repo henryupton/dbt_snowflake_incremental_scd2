@@ -33,23 +33,12 @@
         {%- set change_type_sql = "CASE WHEN ROW_NUMBER() OVER (PARTITION BY " + unique_keys_csv + " ORDER BY " + updated_at + ") = 1 THEN 'I' ELSE 'U' END" -%}
     {%- endif -%}
 
-    {# Build the comparison conditions for change detection #}
+    {# Build hash-based change detection #}
     {%- if scd_check_columns -%}
-        {%- set scd_check_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(scd_check_columns | map("upper")) -%}
-        {%- set change_detection_conditions = [] -%}
-        {%- for col in scd_check_columns -%}
-            {%- set change_condition = "coalesce(n.\"" + col|upper + "\", 'NULL_VALUE') != coalesce(p.\"" + col|upper + "\", 'NULL_VALUE')" -%}
-            {%- do change_detection_conditions.append(change_condition) -%}
-        {%- endfor -%}
-        {%- set change_detection_sql = change_detection_conditions | join(' or ') -%}
+        {%- set hash_columns = scd_check_columns -%}
     {%- else -%}
-        {# If no scd_check_columns specified, compare all business columns #}
-        {%- set change_detection_conditions = [] -%}
-        {%- for col in dest_cols_names -%}
-            {%- set change_condition = "coalesce(n.\"" + col + "\", 'NULL_VALUE') != coalesce(p.\"" + col + "\", 'NULL_VALUE')" -%}
-            {%- do change_detection_conditions.append(change_condition) -%}
-        {%- endfor -%}
-        {%- set change_detection_sql = change_detection_conditions | join(' or ') -%}
+        {# If no scd_check_columns specified, use all business columns #}
+        {%- set hash_columns = dest_cols_names -%}
     {%- endif -%}
 
 {# This section is where the magic happens: the MERGE statement #}
@@ -61,7 +50,8 @@ using (
             select
                 {{ dest_cols_csv }},
                 {{ updated_at }},
-                {{ change_type_sql }} as {{ change_type_col }}
+                {{ change_type_sql }} as {{ change_type_col }},
+                {{ dbt_utils.generate_surrogate_key(hash_columns | list) }} as _scd2_hash
             from {{ temp_relation }}
         ),
         {# We need the existing version of any records that are about to be updated #}
@@ -69,7 +59,8 @@ using (
             select
                 {{ dest_cols_csv }},
                 {{ updated_at }},
-                {{ change_type_col }}
+                {{ change_type_col }},
+                {{ dbt_utils.generate_surrogate_key(hash_columns | list) }} as _scd2_hash
             from {{ this }}
             where {{ is_current_col }}
                 and {{ unique_keys_csv }} in (select {{ unique_keys_csv }} from new_records)
@@ -77,21 +68,27 @@ using (
         {# Bring the band together - only include records where columns have changed #}
         all_records as (
             select 
-                n.*
+                {% for col in dest_cols_names %}
+                n.{{ col }},
+                {% endfor %}
+                n.{{ updated_at }},
+                n.{{ change_type_col }}
             from new_records n
             left join previous_record p on n.{{ unique_keys_csv }} = p.{{ unique_keys_csv }}
             where p.{{ unique_keys_csv.split(',')[0] }} is null 
-               or ({{ change_detection_sql }})
+               or n._scd2_hash != p._scd2_hash
             
             union all
             
             select 
-                p.{{ dest_cols_csv }},
+                {% for col in dest_cols_names %}
+                p.{{ col }},
+                {% endfor %}
                 p.{{ updated_at }},
                 'U' as {{ change_type_col }}
             from previous_record p
             inner join new_records n on p.{{ unique_keys_csv }} = n.{{ unique_keys_csv }}
-            where {{ change_detection_sql }}
+            where n._scd2_hash != p._scd2_hash
         )
     select
         {{ dest_cols_csv }},
