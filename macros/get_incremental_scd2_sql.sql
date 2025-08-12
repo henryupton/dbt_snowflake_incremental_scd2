@@ -19,11 +19,11 @@
     {% set updated_at = '"' + updated_at_col + '"' %}
 
     {# Prepare column lists for the MERGE statement #}
-    {%- set unique_keys_csv = get_quoted_csv(unique_key | map("upper")) -%}
+    {%- set unique_keys_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(unique_key | map("upper")) -%}
     {%- set dest_cols_names = dest_columns | map(attribute="name") | map("upper") | reject('in', audit_cols_names) | list -%}
-    {%- set dest_cols_csv = get_quoted_csv(dest_cols_names) -%}
+    {%- set dest_cols_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(dest_cols_names) -%}
     {%- set all_cols_names = dest_cols_names + audit_cols_names -%}
-    {%- set all_cols_csv = get_quoted_csv(all_cols_names) -%}
+    {%- set all_cols_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(all_cols_names) -%}
 
     {# Process change_type_expr - defaults to change_type_col if not provided #}
     {%- if change_type_expr -%}
@@ -35,7 +35,7 @@
 
     {# Build the comparison conditions for change detection #}
     {%- if scd_check_columns -%}
-        {%- set scd_check_csv = get_quoted_csv(scd_check_columns | map("upper")) -%}
+        {%- set scd_check_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(scd_check_columns | map("upper")) -%}
         {%- set change_detection_conditions = [] -%}
         {%- for col in scd_check_columns -%}
             {%- set change_condition = "coalesce(n.\"" + col|upper + "\", 'NULL_VALUE') != coalesce(p.\"" + col|upper + "\", 'NULL_VALUE')" -%}
@@ -96,9 +96,9 @@ using (
     select
         {{ dest_cols_csv }},
         {# SCD2 audit columns using reusable macros #}
-        {{ get_is_current_sql(unique_keys_csv, updated_at) }} as {{ is_current_col }},
-        {{ get_valid_from_sql(updated_at) }} as {{ valid_from_col }},
-        {{ get_valid_to_sql(unique_keys_csv, updated_at, default_valid_to) }} as {{ valid_to_col }},
+        {{ dbt_snowflake_incremental_scd2.get_is_current_sql(unique_keys_csv, updated_at) }} as {{ is_current_col }},
+        {{ dbt_snowflake_incremental_scd2.get_valid_from_sql(updated_at) }} as {{ valid_from_col }},
+        {{ dbt_snowflake_incremental_scd2.get_valid_to_sql(unique_keys_csv, updated_at, default_valid_to) }} as {{ valid_to_col }},
         {{ updated_at }} as {{ updated_at_col }},
         {{ change_type_col }}
     from all_records

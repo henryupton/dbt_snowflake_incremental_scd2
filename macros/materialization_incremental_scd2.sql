@@ -56,7 +56,7 @@
       'default_valid_to': default_valid_to
     } -%}
     
-    {%- set initial_load_sql = get_initial_load_scd2_sql(initial_load_arg_dict) -%}
+    {%- set initial_load_sql = dbt_snowflake_incremental_scd2.get_initial_load_scd2_sql(initial_load_arg_dict) -%}
 
     {%- set build_sql = get_create_table_as_sql(False, target_relation, initial_load_sql) -%}
 
@@ -84,7 +84,7 @@
       'default_valid_to': default_valid_to
     } -%}
 
-    {%- set build_sql = get_incremental_scd2_sql(arg_dict) -%}
+    {%- set build_sql = dbt_snowflake_incremental_scd2.get_incremental_scd2_sql(arg_dict) -%}
 
   {%- endif -%}
 

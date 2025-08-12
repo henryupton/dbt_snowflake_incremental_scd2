@@ -14,7 +14,7 @@
     {%- set default_valid_to = arg_dict.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
 
     {# Prepare unique key CSV for window functions #}
-    {%- set unique_keys_csv = get_quoted_csv(unique_key) -%}
+    {%- set unique_keys_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(unique_key) -%}
 
     {# Process change_type_expr - defaults to ROW_NUMBER logic if not provided #}
     {%- if change_type_expr -%}
@@ -28,15 +28,17 @@ with source_data as (
   select * from {{ temp_relation }}
 )
 select 
-  {# Select all original columns #}
+  {# Select all original columns except the updated_at column since we'll add it as an audit column #}
   {% for col in adapter.get_columns_in_relation(temp_relation) %}
-    {{ col.name }},
+    {% if col.name != updated_at_col %}
+      {{ col.name }},
+    {% endif %}
   {% endfor %}
   
   {# Add SCD2 audit columns using reusable macros #}
-  {{ get_is_current_sql(unique_keys_csv, updated_at_col) }} as {{ is_current_col }},
-  {{ get_valid_from_sql(updated_at_col) }} as {{ valid_from_col }},
-  {{ get_valid_to_sql(unique_keys_csv, updated_at_col, default_valid_to) }} as {{ valid_to_col }},
+  {{ dbt_snowflake_incremental_scd2.get_is_current_sql(unique_keys_csv, updated_at_col) }} as {{ is_current_col }},
+  {{ dbt_snowflake_incremental_scd2.get_valid_from_sql(updated_at_col) }} as {{ valid_from_col }},
+  {{ dbt_snowflake_incremental_scd2.get_valid_to_sql(unique_keys_csv, updated_at_col, default_valid_to) }} as {{ valid_to_col }},
   {{ updated_at_col }} as {{ updated_at_col }},
   {{ change_type_sql }} as {{ change_type_col }}
 from source_data

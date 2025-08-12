@@ -11,7 +11,7 @@
       partition by {{ unique_keys_csv }} 
       order by {{ updated_at_col }}
     ), 
-    {{ parse_timestamp_literal(default_valid_to) }}
+    {{ dbt_snowflake_incremental_scd2.parse_timestamp_literal(default_valid_to) }}
   )
 {% endmacro %}
 

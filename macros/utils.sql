@@ -10,3 +10,13 @@
   current_timestamp()
 {% endmacro %}
 
+{% macro get_quoted_csv(column_names) %}
+  {% if column_names is string %}
+    {{ column_names }}
+  {% else %}
+    {% for column in column_names %}
+      {{ column }}{{ ", " if not loop.last }}
+    {% endfor %}
+  {% endif %}
+{% endmacro %}
+
