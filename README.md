@@ -10,8 +10,8 @@ A dbt package providing a custom materialization for implementing Slowly Changin
 
 - **🚀 Custom materialization**: `incremental_scd2` materialization specifically designed for SCD Type 2 dimensions
 - **⚡ Snowflake optimized**: Uses native MERGE statements and TIMESTAMP_TZ for optimal performance
-- **🔄 Automatic audit columns**: Manages `_IS_CURRENT`, `_VALID_FROM`, `_VALID_TO`, `_UPDATED_AT`, `_LOADED_AT`, and `_SCD_HASH`
-- **📊 Hash-based change detection**: Efficient change detection using `dbt_utils.surrogate_key`
+- **🔄 Automatic audit columns**: Manages `_IS_CURRENT`, `_VALID_FROM`, `_VALID_TO`, `_UPDATED_AT`, and `_CHANGE_TYPE`
+- **📊 Direct column comparison**: Efficient change detection by comparing actual column values
 - **⚙️ Configurable**: Customize audit column names and SCD behavior per model
 - **🧪 Production ready**: Comprehensive windowing logic handles complex SCD2 scenarios
 - **📚 Interactive demo**: Complete demo with 6 batches showing real-world SCD2 behavior
@@ -52,7 +52,8 @@ dbt deps
 | `valid_from_column`      | ❌        | `_VALID_FROM`              | Name of the valid from timestamp column                          |
 | `valid_to_column`        | ❌        | `_VALID_TO`                | Name of the valid to timestamp column                            |
 | `updated_at_column`      | ❌        | `_UPDATED_AT`              | Name of the source system timestamp column                       |
-| `scd_hash_column`        | ❌        | `_SCD_HASH`                | Name of the SCD hash column for change detection                 |
+| `change_type_column`     | ❌        | `_CHANGE_TYPE`             | Name of the change type flag column (I, U, D)                   |
+| `change_type_expr`       | ❌        | `null`                     | Custom SQL expression for change type detection                  |
 | `default_valid_to`       | ❌        | `2999-12-31 23:59:59+0000` | Default valid_to value for current records                       |
 
 ## Advanced Usage
@@ -67,7 +68,6 @@ dbt deps
     is_current_column='current_flag',
     valid_from_column='eff_start_date',
     valid_to_column='eff_end_date',
-    scd_hash_column='change_hash'
   ) 
 }}
 ```
@@ -84,6 +84,37 @@ vars:
     valid_to_column: "eff_end_date"
     default_valid_to: "2999-12-31 23:59:59+0000"
 ```
+
+### Custom Change Type Detection
+
+Control how change types (I, U, D) are assigned using `change_type_expr`:
+
+#### Default Behavior (no change_type_expr)
+```sql
+{{ 
+  config(
+    materialized='incremental_scd2',
+    unique_key=['customer_id']
+  ) 
+}}
+```
+Uses ROW_NUMBER logic: first occurrence = 'I', subsequent = 'U'
+
+#### Custom Expression
+```sql
+{{ 
+  config(
+    materialized='incremental_scd2',
+    unique_key=['customer_id'],
+    change_type_expr="CASE WHEN status = 'DELETED' THEN 'D' WHEN created_at = updated_at THEN 'I' ELSE 'U' END"
+  ) 
+}}
+```
+
+#### Change Type Values
+- **'I'**: Insert (new records)
+- **'U'**: Update (changed records or expired versions)  
+- **'D'**: Delete (soft deletes detected from source)
 
 ### Incremental Predicates
 
@@ -104,33 +135,32 @@ Add conditional logic to your MERGE:
 ### Initial Load (Full Refresh)
 1. **Windowing logic**: Uses `ROW_NUMBER()` and `LEAD()` functions to handle multiple versions in initial data
 2. **Audit columns**: Automatically adds SCD2 audit columns with proper `TIMESTAMP_TZ` types
-3. **Hash generation**: Creates change detection hash using `dbt_utils.surrogate_key`
+3. **Change type detection**: Assigns 'I' for first occurrence, 'U' for subsequent versions per business key
 
 ### Incremental Updates
 1. **MERGE operation**: Uses Snowflake's native MERGE for optimal performance
-2. **Change detection**: Only processes records where the SCD hash differs
+2. **Change detection**: Only processes records where tracked columns differ
 3. **Version management**: Automatically expires old versions and creates new ones
 4. **Temporal logic**: Maintains proper `_VALID_FROM` and `_VALID_TO` ranges
 
 ### Generated Audit Columns
 
-| Column        | Type         | Description                                    |
-|---------------|--------------|------------------------------------------------|
-| `_IS_CURRENT` | BOOLEAN      | Flag indicating if this is the current version |
-| `_VALID_FROM` | TIMESTAMP_TZ | When this version became effective             |
-| `_VALID_TO`   | TIMESTAMP_TZ | When this version stopped being effective      |
-| `_UPDATED_AT` | TIMESTAMP_TZ | Source system timestamp                        |
-| `_LOADED_AT`  | TIMESTAMP_TZ | Data warehouse load timestamp                  |
-| `_SCD_HASH`   | VARCHAR(32)  | Hash for change detection                      |
+| Column         | Type         | Description                                    |
+|----------------|--------------|------------------------------------------------|
+| `_IS_CURRENT`  | BOOLEAN      | Flag indicating if this is the current version |
+| `_VALID_FROM`  | TIMESTAMP_TZ | When this version became effective             |
+| `_VALID_TO`    | TIMESTAMP_TZ | When this version stopped being effective      |
+| `_UPDATED_AT`  | TIMESTAMP_TZ | Source system timestamp                        |
+| `_CHANGE_TYPE` | VARCHAR(1)   | Change operation type: I(nsert), U(pdate), D(elete) |
 
 ## Example Output
 
 For a customer with email changes over time:
 
-| customer_id | name       | email        | _is_current | _valid_from | _valid_to  | _scd_hash |
-|-------------|------------|--------------|-------------|-------------|------------|-----------|
-| 123         | John Smith | john@old.com | false       | 2023-01-01  | 2023-06-15 | abc123... |
-| 123         | John Smith | john@new.com | true        | 2023-06-15  | 2999-12-31 | def456... |
+| customer_id | name       | email        | _is_current | _valid_from | _valid_to  | _change_type |
+|-------------|------------|--------------|-------------|-------------|------------|--------------|
+| 123         | John Smith | john@old.com | false       | 2023-01-01  | 2023-06-15 | I         |
+| 123         | John Smith | john@new.com | true        | 2023-06-15  | 2999-12-31 | U         |
 
 ## Requirements
 
@@ -163,7 +193,7 @@ dbt test --select tag:scd2
 ## Performance Considerations
 
 - **Snowflake optimization**: Uses `TIMESTAMP_TZ`, MERGE statements, and window functions optimally
-- **Hash-based detection**: Only processes changed records, reducing compute
+- **Column comparison**: Only processes changed records, reducing compute
 - **Incremental predicates**: Add filters to limit processing scope
 - **Clustering**: Consider clustering on unique key columns for large tables
 

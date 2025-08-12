@@ -10,9 +10,10 @@
   {%- set valid_from_col = config.get('valid_from_column', var('valid_from_column', '_VALID_FROM')) -%}
   {%- set valid_to_col = config.get('valid_to_column', var('valid_to_column', '_VALID_TO')) -%}
   {%- set updated_at_col = config.get('updated_at_column', var('updated_at_column', '_UPDATED_AT')) -%}
-  {%- set scd_hash_col = config.get('scd_hash_column', var('scd_hash_column', '_SCD_HASH')) -%}
+  {%- set change_type_col = config.get('change_type_column', var('change_type_column', '_CHANGE_TYPE')) -%}
+  {%- set change_type_expr = config.get('change_type_expr', none) -%}
   {%- set scd_check_columns = config.get('scd_check_columns', none) -%}
-  {%- set default_valid_to = config.get('default_valid_to', var('default_valid_to')) -%}
+  {%- set default_valid_to = config.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
   {%- set unique_key = config.get('unique_key') -%}
 
   {%- if unique_key is none -%}
@@ -38,7 +39,7 @@
     {{ log("Performing initial load for SCD2 table") }}
     
     {# Get audit column names for hash generation #}
-    {%- set audit_columns = [is_current_col, valid_from_col, valid_to_col, updated_at_col, scd_hash_col] -%}
+    {%- set audit_columns = [is_current_col, valid_from_col, valid_to_col, updated_at_col, change_type_col] -%}
     
     {# Build the argument dictionary for the initial load SQL macro #}
     {%- set initial_load_arg_dict = {
@@ -50,7 +51,8 @@
       'valid_from_column': valid_from_col,
       'valid_to_column': valid_to_col,
       'updated_at_column': updated_at_col,
-      'scd_hash_column': scd_hash_col,
+      'change_type_column': change_type_col,
+      'change_type_expr': change_type_expr,
       'default_valid_to': default_valid_to
     } -%}
     
@@ -76,7 +78,8 @@
       'valid_from_column': valid_from_col,
       'valid_to_column': valid_to_col,
       'updated_at_column': updated_at_col,
-      'scd_hash_column': scd_hash_col,
+      'change_type_column': change_type_col,
+      'change_type_expr': change_type_expr,
       'scd_check_columns': scd_check_columns,
       'default_valid_to': default_valid_to
     } -%}

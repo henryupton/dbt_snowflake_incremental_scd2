@@ -10,10 +10,11 @@
     {%- set valid_from_col = arg_dict.get('valid_from_column', var('valid_from_column', '_VALID_FROM')) -%}
     {%- set valid_to_col = arg_dict.get('valid_to_column', var('valid_to_column', '_VALID_TO')) -%}
     {%- set updated_at_col = arg_dict.get('updated_at_column', var('updated_at_column', '_UPDATED_AT')) -%}
-    {%- set scd_hash_col = arg_dict.get('scd_hash_column', var('scd_hash_column', '_SCD_HASH')) -%}
+    {%- set change_type_col = arg_dict.get('change_type_column', var('change_type_column', '_CHANGE_TYPE')) -%}
     {%- set scd_check_columns = arg_dict.get('scd_check_columns', none) -%}
+    {%- set change_type_expr = arg_dict.get('change_type_expr', none) -%}
     {%- set default_valid_to = arg_dict.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
-    {%- set audit_cols_names = [is_current_col, valid_from_col, valid_to_col, updated_at_col, scd_hash_col] -%}
+    {%- set audit_cols_names = [is_current_col, valid_from_col, valid_to_col, updated_at_col, change_type_col] -%}
 
     {% set updated_at = '"' + updated_at_col + '"' %}
 
@@ -24,6 +25,33 @@
     {%- set all_cols_names = dest_cols_names + audit_cols_names -%}
     {%- set all_cols_csv = get_quoted_csv(all_cols_names) -%}
 
+    {# Process change_type_expr - defaults to change_type_col if not provided #}
+    {%- if change_type_expr -%}
+        {%- set change_type_sql = change_type_expr -%}
+    {%- else -%}
+        {# Default ROW_NUMBER logic #}
+        {%- set change_type_sql = "CASE WHEN ROW_NUMBER() OVER (PARTITION BY " + unique_keys_csv + " ORDER BY " + updated_at + ") = 1 THEN 'I' ELSE 'U' END" -%}
+    {%- endif -%}
+
+    {# Build the comparison conditions for change detection #}
+    {%- if scd_check_columns -%}
+        {%- set scd_check_csv = get_quoted_csv(scd_check_columns | map("upper")) -%}
+        {%- set change_detection_conditions = [] -%}
+        {%- for col in scd_check_columns -%}
+            {%- set change_condition = "coalesce(n.\"" + col|upper + "\", 'NULL_VALUE') != coalesce(p.\"" + col|upper + "\", 'NULL_VALUE')" -%}
+            {%- do change_detection_conditions.append(change_condition) -%}
+        {%- endfor -%}
+        {%- set change_detection_sql = change_detection_conditions | join(' or ') -%}
+    {%- else -%}
+        {# If no scd_check_columns specified, compare all business columns #}
+        {%- set change_detection_conditions = [] -%}
+        {%- for col in dest_cols_names -%}
+            {%- set change_condition = "coalesce(n.\"" + col + "\", 'NULL_VALUE') != coalesce(p.\"" + col + "\", 'NULL_VALUE')" -%}
+            {%- do change_detection_conditions.append(change_condition) -%}
+        {%- endfor -%}
+        {%- set change_detection_sql = change_detection_conditions | join(' or ') -%}
+    {%- endif -%}
+
 {# This section is where the magic happens: the MERGE statement #}
 merge into {{ target_relation }} AS DBT_INTERNAL_DEST
 using (
@@ -33,7 +61,7 @@ using (
             select
                 {{ dest_cols_csv }},
                 {{ updated_at }},
-                {{ generate_scd_hash(temp_relation, scd_check_columns, audit_cols_names) }} as {{ scd_hash_col }}
+                {{ change_type_sql }} as {{ change_type_col }}
             from {{ temp_relation }}
         ),
         {# We need the existing version of any records that are about to be updated #}
@@ -41,33 +69,29 @@ using (
             select
                 {{ dest_cols_csv }},
                 {{ updated_at }},
-                {{ scd_hash_col }}
+                {{ change_type_col }}
             from {{ this }}
             where {{ is_current_col }}
                 and {{ unique_keys_csv }} in (select {{ unique_keys_csv }} from new_records)
         ),
-        {# Bring the band together - only include records where hash has changed #}
+        {# Bring the band together - only include records where columns have changed #}
         all_records as (
             select 
-                n.*,
-                case 
-                    when p.{{ scd_hash_col }} is null then 'new'
-                    when n.{{ scd_hash_col }} != p.{{ scd_hash_col }} then 'changed'  
-                    else 'unchanged'
-                end as _change_type
+                n.*
             from new_records n
             left join previous_record p on n.{{ unique_keys_csv }} = p.{{ unique_keys_csv }}
-            where p.{{ scd_hash_col }} is null 
-               or n.{{ scd_hash_col }} != p.{{ scd_hash_col }}
+            where p.{{ unique_keys_csv.split(',')[0] }} is null 
+               or ({{ change_detection_sql }})
             
             union all
             
             select 
-                p.*,
-                'expire' as _change_type
+                p.{{ dest_cols_csv }},
+                p.{{ updated_at }},
+                'U' as {{ change_type_col }}
             from previous_record p
             inner join new_records n on p.{{ unique_keys_csv }} = n.{{ unique_keys_csv }}
-            where n.{{ scd_hash_col }} != p.{{ scd_hash_col }}
+            where {{ change_detection_sql }}
         )
     select
         {{ dest_cols_csv }},
@@ -76,7 +100,7 @@ using (
         {{ get_valid_from_sql(updated_at) }} as {{ valid_from_col }},
         {{ get_valid_to_sql(unique_keys_csv, updated_at, default_valid_to) }} as {{ valid_to_col }},
         {{ updated_at }} as {{ updated_at_col }},
-        {{ scd_hash_col }}
+        {{ change_type_col }}
     from all_records
     ) AS DBT_INTERNAL_SOURCE
 on (
