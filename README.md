@@ -25,7 +25,7 @@ Add to your `packages.yml`:
 ```yaml
 packages:
   - package: henryupton/dbt_snowflake_incremental_scd2
-    version: [">=1.0.0", "<2.0.0"]
+    version: [">=0.1.0"]
 ```
 
 ### Via Git
