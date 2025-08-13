@@ -24,6 +24,14 @@
     {{ exceptions.raise_compiler_error(error_message) }}
   {%- endif -%}
 
+  {%- if unique_key is not iterable or unique_key is string -%}
+    {%- set error_message -%}
+      The unique_key configuration must be an array of column names.
+      Received: {{ unique_key }} ({{ unique_key.__class__.__name__ }})
+    {%- endset -%}
+    {{ exceptions.raise_compiler_error(error_message) }}
+  {%- endif -%}
+
   {{ log("Building SCD Type 2 table " ~ target_relation) }}
 
   {# Build the temp table with source data #}
