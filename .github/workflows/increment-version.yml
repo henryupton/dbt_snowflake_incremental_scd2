@@ -102,17 +102,16 @@ jobs:
           echo "Created and pushed tag: $NEW_VERSION"
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          LATEST_TAG="${{ steps.get-tag.outputs.latest_tag }}"
+          
+          gh release create "$NEW_VERSION" \
+            --title "Release $NEW_VERSION" \
+            --notes "## What's Changed
+
+          Automated release with version increment.
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/$LATEST_TAG...$NEW_VERSION"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.new-version.outputs.new_version }}
-          release_name: Release ${{ steps.new-version.outputs.new_version }}
-          draft: false
-          prerelease: false
-          body: |
-            ## What's Changed
-            
-            Automated release with version increment.
-            
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.get-tag.outputs.latest_tag }}...${{ steps.new-version.outputs.new_version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
