@@ -33,7 +33,7 @@ packages:
 ```yaml
 packages:
   - git: "https://github.com/henryupton/dbt_snowflake_incremental_scd2.git"
-    revision: main
+    revision: 0.4.1
 ```
 
 Then run:
