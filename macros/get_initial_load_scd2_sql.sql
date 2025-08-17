@@ -1,3 +1,35 @@
+{%- docs get_initial_load_scd2_sql -%}
+Generates SQL for the initial load of an SCD Type 2 table.
+
+Creates a SELECT statement that adds the necessary SCD audit columns to the source data
+for the first-time population of an SCD Type 2 table. This handles the bootstrap case
+where no historical data exists yet.
+
+**Args:**
+- `arg_dict` (dict): Configuration dictionary containing:
+  - `temp_relation`: Temporary table with source data
+  - `unique_key`: Array of business key columns
+  - `scd_check_columns`: Optional columns to include in change detection
+  - `audit_columns`: List of audit column names to add
+  - `is_current_column`: Name of the is_current flag column
+  - `valid_from_column`: Name of the valid_from timestamp column
+  - `valid_to_column`: Name of the valid_to timestamp column
+  - `updated_at_column`: Name of the updated_at timestamp column
+  - `change_type_column`: Name of the change_type column
+  - `change_type_expr`: Optional custom expression for change_type
+  - `default_valid_to`: Default timestamp for current records
+
+**Returns:**
+- SELECT SQL statement that includes original columns plus SCD audit columns
+
+**Example:**
+For an initial load with customer data, this will:
+- Set is_current = true for the latest version of each customer
+- Set valid_from = updated_at timestamp
+- Set valid_to = default_valid_to for current records, next updated_at for historical ones
+- Set change_type = 'I' for initial load or based on custom expression
+{%- enddocs -%}
+
 {% macro get_initial_load_scd2_sql(arg_dict) %}
     {% set temp_relation = arg_dict["temp_relation"] %}
     {% set unique_key = arg_dict["unique_key"] %}
