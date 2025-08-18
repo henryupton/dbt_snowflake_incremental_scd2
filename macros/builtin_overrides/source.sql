@@ -29,7 +29,7 @@ newer than the latest record already in the target table.
 {% macro source(source_name, table_name, loaded_at_col=none) %}
   {% set source_relation = builtins.source(source_name, table_name) %}
 
-  {% if is_incremental() and loaded_at_col is not none %}
+  {% if dbt_snowflake_incremental_scd2.is_incremental() and loaded_at_col is not none %}
 
   (
     select *
