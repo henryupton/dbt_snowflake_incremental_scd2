@@ -25,6 +25,11 @@ seeds:
   quote_columns: false
   dbt_snowflake_incremental_scd2_integration_tests:
     +schema: raw_data
+    expected_scd2_join_output:
+      +column_types:
+        _valid_from: timestamp_tz
+        _valid_to: timestamp_tz
+        _is_current: boolean
 
 models:
   dbt_snowflake_incremental_scd2_integration_tests:

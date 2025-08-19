@@ -44,3 +44,58 @@ models:
           - not_null
           - accepted_values:
               values: ['I', 'U', 'D']
+              
+  - name: customers_scd2
+    description: "SCD2 table for customer data used in join tests"
+    columns:
+      - name: customer_id
+        description: "Unique identifier for customer"
+        tests:
+          - not_null
+      - name: _IS_CURRENT
+        description: "Flag indicating if this is the current version"
+        tests:
+          - not_null
+          
+  - name: addresses_scd2
+    description: "SCD2 table for address data used in join tests"
+    columns:
+      - name: customer_id
+        description: "Unique identifier for customer"
+        tests:
+          - not_null
+      - name: _IS_CURRENT
+        description: "Flag indicating if this is the current version"
+        tests:
+          - not_null
+          
+  - name: test_scd2_join
+    description: "Test model demonstrating the scd2_join macro functionality"
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "_valid_from < _valid_to"
+      - dbt_utils.equality:
+          compare_model: ref('expected_scd2_join_output')
+          compare_columns:
+            - customer_id
+            - customer_name
+            - email
+            - street
+            - city
+            - state
+            - _is_current
+            - _valid_from
+            - _valid_to
+    columns:
+      - name: customer_id
+        description: "Business key for joining tables"
+        tests:
+          - not_null
+      - name: _valid_from
+        description: "Start of validity period for this combination"
+        tests:
+          - not_null
+      - name: _valid_to
+        description: "End of validity period for this combination"
+        tests:
+          - not_null
