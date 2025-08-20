@@ -14,6 +14,9 @@ A dbt package providing a custom materialization for implementing Slowly Changin
 - **📊 Direct column comparison**: Efficient change detection by comparing actual column values
 - **⚙️ Configurable**: Customize audit column names and SCD behavior per model
 - **🧪 Production ready**: Comprehensive windowing logic handles complex SCD2 scenarios
+- **🔗 Temporal joins**: `scd2_join` macro for joining multiple SCD2 tables across time
+- **⚡ Incremental source loading**: Enhanced `source()` macro with automatic incremental filtering
+- **🎯 Extended incremental support**: Custom `is_incremental()` macro supporting SCD2 materialization
 - **📚 Interactive demo**: Complete demo with 6 batches showing real-world SCD2 behavior
 
 ## Installation
@@ -52,7 +55,7 @@ dbt deps
 | `valid_from_column`      | ❌        | `_VALID_FROM`              | Name of the valid from timestamp column                          |
 | `valid_to_column`        | ❌        | `_VALID_TO`                | Name of the valid to timestamp column                            |
 | `updated_at_column`      | ❌        | `_UPDATED_AT`              | Name of the source system timestamp column                       |
-| `change_type_column`     | ❌        | `_CHANGE_TYPE`             | Name of the change type flag column (I, U, D)                   |
+| `change_type_column`     | ❌        | `_CHANGE_TYPE`             | Name of the change type flag column (I, U, D)                    |
 | `change_type_expr`       | ❌        | `null`                     | Custom SQL expression for change type detection                  |
 | `default_valid_to`       | ❌        | `2999-12-31 23:59:59+0000` | Default valid_to value for current records                       |
 
@@ -130,6 +133,98 @@ Add conditional logic to your MERGE:
 }}
 ```
 
+### Temporal Joins with `scd2_join`
+
+The `scd2_join` macro enables joining multiple SCD2 tables across time by creating a temporal spine that reconstructs the state of all tables at each point in time when any table changed.
+
+#### Basic Usage
+
+```sql
+-- Model: customer_address_history.sql
+{{ 
+  config(
+    materialized='table'
+  ) 
+}}
+
+{{ dbt_snowflake_incremental_scd2.scd2_join([
+    ref('customers_scd2'),
+    ref('addresses_scd2')
+  ], 'customer_id') }}
+```
+
+#### How It Works
+
+1. **Temporal Spine Creation**: Collects all `_valid_from` and `_valid_to` timestamps from all input tables
+2. **Time Range Generation**: Creates distinct time periods when any table had changes
+3. **Temporal Joins**: Joins each table's active version for each time period
+4. **Complete History**: Returns a complete timeline showing how all tables looked together at each point in time
+
+#### Example Output
+
+For customer and address SCD2 tables:
+
+| customer_id | name       | city   | phone    | _is_current | _valid_from | _valid_to  |
+|-------------|------------|--------|----------|-------------|-------------|------------|
+| 123         | John Smith | Boston | 555-0001 | false       | 2023-01-01  | 2023-03-15 |
+| 123         | John Smith | Boston | 555-0002 | false       | 2023-03-15  | 2023-06-01 |  
+| 123         | John Smith | NYC    | 555-0002 | true        | 2023-06-01  | 2999-12-31 |
+
+### Enhanced Source Macro
+
+The enhanced `source()` macro adds incremental loading capability to source tables, automatically filtering for new records on incremental runs.
+
+#### Basic Usage
+
+```sql
+-- Instead of: select * from {{ source('raw_data', 'customers') }}
+-- Use this for incremental loading:
+select * from {{ source('raw_data', 'customers', 'updated_at') }}
+```
+
+#### Behavior
+
+- **Full Refresh**: Returns complete source table (standard dbt behavior)
+- **Incremental Runs**: Automatically filters for records where `loaded_at_col > max(loaded_at_col)` from target table
+- **Performance**: Reduces data processing by only loading new/changed records
+
+#### Example in SCD2 Model
+
+```sql
+{{ 
+  config(
+    materialized='incremental_scd2',
+    unique_key=['customer_id']
+  ) 
+}}
+
+select 
+    customer_id,
+    name,
+    email,
+    updated_at as _updated_at
+from {{ source('raw_data', 'customers', 'updated_at') }}
+```
+
+### Extended Incremental Support
+
+The custom `is_incremental()` macro extends dbt's built-in functionality to recognize the `incremental_scd2` materialization type.
+
+#### Enhanced Logic
+
+```sql
+-- This now works in incremental_scd2 models:
+{% if is_incremental() %}
+  -- Custom logic for incremental runs
+  where updated_at > (select max(_updated_at) from {{ this }})
+{% endif %}
+```
+
+#### Supported Materializations
+
+- `incremental` (standard dbt)
+- `incremental_scd2` (this package)
+
 ## How It Works
 
 ### Initial Load (Full Refresh)
@@ -145,12 +240,12 @@ Add conditional logic to your MERGE:
 
 ### Generated Audit Columns
 
-| Column         | Type         | Description                                    |
-|----------------|--------------|------------------------------------------------|
-| `_IS_CURRENT`  | BOOLEAN      | Flag indicating if this is the current version |
-| `_VALID_FROM`  | TIMESTAMP_TZ | When this version became effective             |
-| `_VALID_TO`    | TIMESTAMP_TZ | When this version stopped being effective      |
-| `_UPDATED_AT`  | TIMESTAMP_TZ | Source system timestamp                        |
+| Column         | Type         | Description                                         |
+|----------------|--------------|-----------------------------------------------------|
+| `_IS_CURRENT`  | BOOLEAN      | Flag indicating if this is the current version      |
+| `_VALID_FROM`  | TIMESTAMP_TZ | When this version became effective                  |
+| `_VALID_TO`    | TIMESTAMP_TZ | When this version stopped being effective           |
+| `_UPDATED_AT`  | TIMESTAMP_TZ | Source system timestamp                             |
 | `_CHANGE_TYPE` | VARCHAR(1)   | Change operation type: I(nsert), U(pdate), D(elete) |
 
 ## Example Output
@@ -159,8 +254,8 @@ For a customer with email changes over time:
 
 | customer_id | name       | email        | _is_current | _valid_from | _valid_to  | _change_type |
 |-------------|------------|--------------|-------------|-------------|------------|--------------|
-| 123         | John Smith | john@old.com | false       | 2023-01-01  | 2023-06-15 | I         |
-| 123         | John Smith | john@new.com | true        | 2023-06-15  | 2999-12-31 | U         |
+| 123         | John Smith | john@old.com | false       | 2023-01-01  | 2023-06-15 | I            |
+| 123         | John Smith | john@new.com | true        | 2023-06-15  | 2999-12-31 | U            |
 
 ## Requirements
 
@@ -179,6 +274,8 @@ For a customer with email changes over time:
 
 ## Testing
 
+The package includes a comprehensive test suite covering SCD2 behavior, temporal joins, and edge cases.
+
 ```bash
 # Run all tests
 dbt test
@@ -186,9 +283,23 @@ dbt test
 # Test specific SCD2 behaviors
 dbt test --select tag:scd2
 
+# Test temporal join functionality
+dbt test --select test_scd2_join
+
 # Run the interactive demo
-./demo.sh
+cd integration_tests && dbt run && dbt test
 ```
+
+### Test Coverage
+
+- **SCD2 Basic Functionality**: Validates audit column generation, change detection, and versioning
+- **Custom Change Types**: Tests custom `change_type_expr` configuration
+- **Custom Column Names**: Verifies custom audit column naming
+- **Temporal Joins**: Tests `scd2_join` macro with multiple SCD2 tables including:
+  - Data accuracy and completeness
+  - Temporal consistency across joins
+  - Expected row count validation
+  - Exact output matching
 
 ## Performance Considerations
 
