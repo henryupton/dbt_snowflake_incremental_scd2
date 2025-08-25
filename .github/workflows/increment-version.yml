@@ -31,7 +31,7 @@ jobs:
 
       - name: Increment version
         id: increment-version
-        uses: henryupton/action-increment-version@v1
+        uses: henryupton/action-increment-version@v1.2.0
         with:
           version_bump: ${{ inputs.version_bump || 'patch' }}
           update_file: 'README.md'
