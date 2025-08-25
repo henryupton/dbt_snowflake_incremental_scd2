@@ -99,3 +99,49 @@ models:
         description: "End of validity period for this combination"
         tests:
           - not_null
+
+  - name: test_scd2_composite_key
+    description: "Test SCD2 functionality with composite unique key (product_id + location_id)"
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_products_scd2')
+          compare_columns:
+            - product_id
+            - location_id
+            - product_name
+            - price
+            - category
+            - _IS_CURRENT
+            - _VALID_FROM
+            - _VALID_TO
+            - _UPDATED_AT
+            - _CHANGE_TYPE
+    columns:
+      - name: product_id
+        description: "Product identifier (part of composite key)"
+        tests:
+          - not_null
+      - name: location_id
+        description: "Location identifier (part of composite key)"
+        tests:
+          - not_null
+      - name: _IS_CURRENT
+        description: "Flag indicating if this is the current version"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: _VALID_FROM
+        description: "When this version became effective"
+        tests:
+          - not_null
+      - name: _VALID_TO
+        description: "When this version expired"
+        tests:
+          - not_null
+      - name: _CHANGE_TYPE
+        description: "Type of change operation (I, U, D)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['I', 'U', 'D']

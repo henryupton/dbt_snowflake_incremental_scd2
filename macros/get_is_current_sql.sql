@@ -16,9 +16,9 @@ For a customer with multiple versions, only the record with the latest updated_a
 timestamp will have is_current = true.
 {%- enddocs -%}
 
-{% macro get_is_current_sql(unique_keys_csv, updated_at_col) %}
+{%- macro get_is_current_sql(unique_keys_csv, updated_at_col) -%}
   row_number() over(
     partition by {{ unique_keys_csv }} 
     order by {{ updated_at_col }} desc
   ) = 1
-{% endmacro %}
+{%- endmacro -%}

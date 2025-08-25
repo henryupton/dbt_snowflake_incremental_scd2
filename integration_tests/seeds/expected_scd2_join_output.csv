@@ -1,0 +1,14 @@
+customer_id,customer_name,email,street,city,state,_is_current,_valid_from,_valid_to
+1,John Doe,john@example.com,123 Main St,New York,NY,false,2024-01-01 09:00:00,2024-01-01 10:00:00
+1,John Doe,john@example.com,123 Main St,New York,NY,false,2024-01-01 10:00:00,2024-01-01 14:00:00
+1,John Doe,john@example.com,456 Oak Ave,New York,NY,false,2024-01-01 14:00:00,2024-01-01 15:00:00
+1,John Doe,john.updated@example.com,456 Oak Ave,New York,NY,false,2024-01-01 15:00:00,2024-01-01 16:00:00
+1,John Doe,john.updated@example.com,789 Pine Rd,Boston,MA,true,2024-01-01 16:00:00,2999-12-31 23:59:59
+2,Jane Smith,jane@example.com,,,,false,2024-01-01 10:00:00,2024-01-01 10:30:00
+2,Jane Smith,jane@example.com,321 Elm St,Chicago,IL,false,2024-01-01 10:30:00,2024-01-01 12:00:00
+2,Jane Smith,jane.updated@example.com,321 Elm St,Chicago,IL,false,2024-01-01 12:00:00,2024-01-01 13:00:00
+2,Jane Smith,jane.updated@example.com,654 Maple Dr,Chicago,IL,false,2024-01-01 13:00:00,2024-01-01 18:00:00
+2,Jane Smith,jane.final@example.com,654 Maple Dr,Chicago,IL,true,2024-01-01 18:00:00,2999-12-31 23:59:59
+3,Bob Wilson,bob@example.com,,,,false,2024-01-01 11:00:00,2024-01-01 11:30:00
+3,Bob Wilson,bob@example.com,987 Cedar Ln,Miami,FL,false,2024-01-01 11:30:00,2024-01-01 17:00:00
+3,Bob Wilson,bob@example.com,147 Birch Way,Tampa,FL,true,2024-01-01 17:00:00,2999-12-31 23:59:59

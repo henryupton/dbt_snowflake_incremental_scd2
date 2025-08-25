@@ -53,6 +53,8 @@ The generated MERGE will handle scenarios like:
 
     {% set updated_at = '"' + updated_at_col + '"' %}
 
+    {% set unique_key_all = unique_key + [updated_at_col] %}
+
     {# Prepare column lists for the MERGE statement #}
     {%- set unique_keys_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(unique_key | map("upper")) -%}
     {%- set dest_cols_names = dest_columns | map(attribute="name") | map("upper") | reject('in', audit_cols_names) | list -%}
@@ -75,6 +77,12 @@ The generated MERGE will handle scenarios like:
         {# If no scd_check_columns specified, use all business columns #}
         {%- set hash_columns = dest_cols_names -%}
     {%- endif -%}
+    
+    {# Create qualified version for previous_record CTE #}
+    {%- set qualified_hash_columns = [] -%}
+    {%- for col in hash_columns -%}
+        {%- set _ = qualified_hash_columns.append('p.' ~ col) -%}
+    {%- endfor -%}
 
 {# This section is where the magic happens: the MERGE statement #}
 merge into {{ target_relation }} AS DBT_INTERNAL_DEST
@@ -92,38 +100,39 @@ using (
         {# We need the existing version of any records that are about to be updated #}
         previous_record as (
             select
-                {{ dest_cols_csv }},
-                {{ updated_at }},
-                {{ change_type_col }},
-                {{ dbt_utils.generate_surrogate_key(hash_columns | list) }} as _scd2_hash
-            from {{ this }}
-            where {{ is_current_col }}
-                and {{ unique_keys_csv }} in (select {{ unique_keys_csv }} from new_records)
+                {% for col in dest_cols_names -%}
+                p.{{ col }},
+                {%- endfor %}
+                p.{{ updated_at }},
+                p.{{ change_type_col }},
+                {{ dbt_utils.generate_surrogate_key(qualified_hash_columns) }} as _scd2_hash
+            from {{ this }} as p
+            inner join new_records as n on {% for col in unique_key_all -%}
+                p.{{ col }} = n.{{ col }} {% if not loop.last %} and {% endif %}
+            {%- endfor %}
+            where p.{{ is_current_col }}
         ),
         {# Bring the band together - only include records where columns have changed #}
         all_records as (
             select 
-                {% for col in dest_cols_names %}
-                n.{{ col }},
-                {% endfor %}
-                n.{{ updated_at }},
-                n.{{ change_type_col }}
-            from new_records n
-            left join previous_record p on n.{{ unique_keys_csv }} = p.{{ unique_keys_csv }}
-            where p.{{ unique_keys_csv.split(',')[0] }} is null 
-               or n._scd2_hash != p._scd2_hash
+                {% for col in dest_cols_names -%}
+                {{ col }},
+                {%- endfor %}
+                {{ updated_at }},
+                {{ change_type_col }},
+                _scd2_hash
+            from new_records
             
             union all
             
             select 
-                {% for col in dest_cols_names %}
-                p.{{ col }},
-                {% endfor %}
-                p.{{ updated_at }},
-                'U' as {{ change_type_col }}
-            from previous_record p
-            inner join new_records n on p.{{ unique_keys_csv }} = n.{{ unique_keys_csv }}
-            where n._scd2_hash != p._scd2_hash
+                {% for col in dest_cols_names -%}
+                {{ col }},
+                {%- endfor %}
+                {{ updated_at }},
+                'U' as {{ change_type_col }},
+                _scd2_hash
+            from previous_record
         )
     select
         {{ dest_cols_csv }},
@@ -134,13 +143,14 @@ using (
         {{ updated_at }} as {{ updated_at_col }},
         {{ change_type_col }}
     from all_records
+    qualify lead(_scd2_hash) over(partition by {{ unique_keys_csv }} order by {{ updated_at }} desc) is null
+        or _scd2_hash != lead(_scd2_hash) over(partition by {{ unique_keys_csv }} order by {{ updated_at }} desc)
     ) AS DBT_INTERNAL_SOURCE
 on (
     {# Matching condition for the MERGE: unique key and the updated_at timestamp #}
-    {% for col in unique_key %}
-        DBT_INTERNAL_DEST.{{ col }} = DBT_INTERNAL_SOURCE.{{ col }}{% if not loop.last %},{% endif %}
+    {% for col in unique_key_all -%}
+        DBT_INTERNAL_DEST.{{ col }} = DBT_INTERNAL_SOURCE.{{ col }}{% if not loop.last %} and {% endif %}
     {%- endfor %}
-    and DBT_INTERNAL_DEST.{{ updated_at }} = DBT_INTERNAL_SOURCE.{{ updated_at }}
     {%- if incremental_predicates -%}
     {# Optional: Incremental Predicates (if defined in dbt_project.yml or model config) #}
     and (

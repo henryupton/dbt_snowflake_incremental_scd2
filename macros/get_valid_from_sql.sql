@@ -14,6 +14,6 @@ indicating when this version of the record became active.
 For a customer record updated on 2021-06-01, the valid_from will be 2021-06-01.
 {%- enddocs -%}
 
-{% macro get_valid_from_sql(updated_at_col) %}
+{% macro get_valid_from_sql(updated_at_col) -%}
   {{ updated_at_col }}
-{% endmacro %}
+{%- endmacro %}

@@ -12,12 +12,12 @@ Converts column names (string or array) into a comma-separated list for SQL quer
 - `get_quoted_csv(["col1", "col2"])` returns `"col1, col2"`
 {%- enddocs -%}
 
-{% macro get_quoted_csv(column_names) %}
+{%- macro get_quoted_csv(column_names) -%}
   {% if column_names is string %}
     {{ column_names }}
   {% else %}
     {% for column in column_names %}
       {{ column }}{{ ", " if not loop.last }}
-    {% endfor %}
+    {%- endfor %}
   {% endif %}
-{% endmacro %}
+{%- endmacro -%}
