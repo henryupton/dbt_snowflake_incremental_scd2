@@ -13,7 +13,7 @@
   {%- set change_type_col = config.get('change_type_column', var('change_type_column', '_CHANGE_TYPE')) -%}
   {%- set change_type_expr = config.get('change_type_expr', none) -%}
   {%- set scd_check_columns = config.get('scd_check_columns', none) -%}
-  {%- set default_valid_to = config.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
+  {%- set default_valid_to = config.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59')) -%}
   {%- set unique_key = config.get('unique_key') -%}
 
   {%- if unique_key is none -%}
@@ -24,7 +24,7 @@
     {{ exceptions.raise_compiler_error(error_message) }}
   {%- endif -%}
 
-  {%- if unique_key is not iterable or unique_key is string -%}
+  {%- if not dbt_snowflake_incremental_scd2.is_array(unique_key) -%}
     {%- set error_message -%}
       The unique_key configuration must be an array of column names.
       Received: {{ unique_key }} ({{ unique_key.__class__.__name__ }})

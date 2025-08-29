@@ -30,4 +30,4 @@ vars:
     updated_at_column: "_UPDATED_AT"
     change_type_column: "_CHANGE_TYPE"
     # Default valid_to date for current records
-    default_valid_to: "2999-12-31 23:59:59+0000"
+    default_valid_to: "2999-12-31 23:59:59"

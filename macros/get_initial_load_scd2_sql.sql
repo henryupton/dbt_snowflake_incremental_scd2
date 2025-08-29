@@ -43,7 +43,7 @@ For an initial load with customer data, this will:
     {%- set updated_at_col = arg_dict.get('updated_at_column', var('updated_at_column', '_UPDATED_AT')) -%}
     {%- set change_type_col = arg_dict.get('change_type_column', var('change_type_column', '_CHANGE_TYPE')) -%}
     {%- set change_type_expr = arg_dict.get('change_type_expr', none) -%}
-    {%- set default_valid_to = arg_dict.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59+0000')) -%}
+    {%- set default_valid_to = arg_dict.get('default_valid_to', var('default_valid_to', '2999-12-31 23:59:59')) -%}
 
     {# Prepare unique key CSV for window functions #}
     {%- set unique_keys_csv = dbt_snowflake_incremental_scd2.get_quoted_csv(unique_key) -%}
