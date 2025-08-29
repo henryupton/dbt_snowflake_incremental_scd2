@@ -110,10 +110,12 @@ using (
             inner join new_records as n on {% for col in unique_key -%}
                 p.{{ col }} = n.{{ col }} {% if not loop.last %} and {% endif %}
             {%- endfor %}
-{#            where p.{{ is_current_col }}#}
+            {# We want all previous records which could have been valid when any of the new records occurred. #}
+            where n.{{ updated_at }} <= p.{{ valid_to_col }} -- Only those that could be affected by the new record's updated_at.
         )
         -- select * from previous_record order by {{ unique_keys_csv }}, {{ updated_at }} limit 213;
         ,
+
         {# Bring the band together. #}
         all_records as (
             select 
