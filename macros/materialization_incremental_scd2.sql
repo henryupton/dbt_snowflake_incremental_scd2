@@ -39,6 +39,23 @@
     {{ create_table_as(True, tmp_relation, sql) }}
   {%- endcall -%}
 
+  {# Validate updated_at column type #}
+  {%- set temp_columns = adapter.get_columns_in_relation(tmp_relation) -%}
+  {%- for column in temp_columns -%}
+    {%- if column.name | upper == updated_at_col | upper -%}
+      {%- set column_type = column.data_type | upper -%}
+      {%- if 'DATE' in column_type and 'TIME' not in column_type -%}
+        {%- set warning_message -%}
+          Column '{{ updated_at_col }}' has type '{{ column_type }}' which is a DATE type.
+          SCD2 logic works best with TIMESTAMP types for precise change tracking.
+          Consider using a TIMESTAMP column for more accurate validity windows.
+          Undocumented behavior may occur when using DATE types.
+        {%- endset -%}
+        {{ exceptions.warn(warning_message) }}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+
   {%- set should_full_refresh = (should_full_refresh() or existing_relation is none) -%}
 
   {%- if should_full_refresh -%}
