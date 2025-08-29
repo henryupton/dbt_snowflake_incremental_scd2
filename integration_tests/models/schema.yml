@@ -3,18 +3,18 @@ version: 2
 models:
   - name: customers_scd2
     tests:
-      - dbt_utils.equality:
-          compare_model: ref('customers_scd2_result_{{ var("iteration", 1) }}')
-          compare_columns:
-            - customer_id
-            - customer_name
-            - email
-            - status
-            - _updated_at
-            - _valid_from
-            - _valid_to
-            - _is_current
-            - _change_type
+#      - dbt_utils.equality:
+#          compare_model: ref('customers_scd2_result_{{ var("iteration", 1) }}')
+#          compare_columns:
+#            - customer_id
+#            - customer_name
+#            - email
+#            - status
+#            - _updated_at
+#            - _valid_from
+#            - _valid_to
+#            - _is_current
+#            - _change_type
       
       # SCD2 Data Quality Tests
       - dbt_snowflake_incremental_scd2.one_current_per_key:

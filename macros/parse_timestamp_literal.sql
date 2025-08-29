@@ -15,5 +15,5 @@ using Snowflake's :: casting syntax.
 {%- enddocs -%}
 
 {% macro parse_timestamp_literal(timestamp_string) %}
-  '{{ timestamp_string }}'
+  '{{ timestamp_string }}'::timestamp_tz
 {% endmacro %}

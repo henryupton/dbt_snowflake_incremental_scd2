@@ -85,7 +85,7 @@ vars:
     is_current_column: "current_flag"
     valid_from_column: "eff_start_date" 
     valid_to_column: "eff_end_date"
-    default_valid_to: "2999-12-31 23:59:59+0000"
+    default_valid_to: "2999-12-31 23:59:59"
 ```
 
 ### Custom Change Type Detection
