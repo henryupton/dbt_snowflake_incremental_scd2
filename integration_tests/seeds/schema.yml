@@ -1,0 +1,171 @@
+version: 2
+
+seeds:
+  - name: customers_raw_1
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+
+  - name: customers_raw_2
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+
+  - name: customers_raw_3
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+
+  - name: customers_raw_4
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+
+  - name: customers_raw_5
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+  - name: customers_scd2_result_1
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+      - name: _valid_from
+        data_type: timestamp
+      - name: _valid_to
+        data_type: timestamp
+      - name: _is_current
+        data_type: boolean
+      - name: _change_type
+        data_type: varchar
+
+  - name: customers_scd2_result_2
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+      - name: _valid_from
+        data_type: timestamp
+      - name: _valid_to
+        data_type: timestamp
+      - name: _is_current
+        data_type: boolean
+      - name: _change_type
+        data_type: varchar
+
+  - name: customers_scd2_result_3
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+      - name: _valid_from
+        data_type: timestamp
+      - name: _valid_to
+        data_type: timestamp
+      - name: _is_current
+        data_type: boolean
+      - name: _change_type
+        data_type: varchar
+
+  - name: customers_scd2_result_4
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+      - name: _valid_from
+        data_type: timestamp
+      - name: _valid_to
+        data_type: timestamp
+      - name: _is_current
+        data_type: boolean
+      - name: _change_type
+        data_type: varchar
+
+  - name: customers_scd2_result_5
+    columns:
+      - name: customer_id
+        data_type: integer
+      - name: customer_name
+        data_type: varchar
+      - name: email
+        data_type: varchar
+      - name: status
+        data_type: varchar
+      - name: _updated_at
+        data_type: timestamp
+      - name: _valid_from
+        data_type: timestamp
+      - name: _valid_to
+        data_type: timestamp
+      - name: _is_current
+        data_type: boolean
+      - name: _change_type
+        data_type: varchar

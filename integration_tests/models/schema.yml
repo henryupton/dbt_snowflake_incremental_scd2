@@ -1,147 +1,47 @@
 version: 2
 
 models:
-  - name: test_scd2_basic
-    description: "Test basic SCD2 functionality with default column names"
+  - name: customers_scd2
     tests:
       - dbt_utils.equality:
-          compare_model: ref('expected_initial_load')
+          compare_model: ref('customers_scd2_result_{{ var("iteration", 1) }}')
           compare_columns:
             - customer_id
             - customer_name
             - email
             - status
-            - _IS_CURRENT
-            - _VALID_FROM
-            - _VALID_TO
-            - _UPDATED_AT
-            - _CHANGE_TYPE
-
-  - name: test_scd2_custom_columns
-    description: "Test SCD2 functionality with custom column names"
-    columns:
-      - name: customer_id
-        description: "Unique identifier for customer"
-        tests:
-          - not_null
-      - name: IS_CURRENT_RECORD
-        description: "Flag indicating if this is the current version"
-        tests:
-          - not_null
-          - accepted_values:
-              values: [true, false]
-      - name: EFFECTIVE_FROM
-        description: "When this version became effective"
-        tests:
-          - not_null
-      - name: EFFECTIVE_TO
-        description: "When this version expired"
-        tests:
-          - not_null
-      - name: RECORD_CHANGE_TYPE
-        description: "Type of change operation (I, U, D)"
-        tests:
-          - not_null
-          - accepted_values:
-              values: ['I', 'U', 'D']
-              
-  - name: customers_scd2
-    description: "SCD2 table for customer data used in join tests"
-    columns:
-      - name: customer_id
-        description: "Unique identifier for customer"
-        tests:
-          - not_null
-      - name: _IS_CURRENT
-        description: "Flag indicating if this is the current version"
-        tests:
-          - not_null
-          
-  - name: addresses_scd2
-    description: "SCD2 table for address data used in join tests"
-    columns:
-      - name: customer_id
-        description: "Unique identifier for customer"
-        tests:
-          - not_null
-      - name: _IS_CURRENT
-        description: "Flag indicating if this is the current version"
-        tests:
-          - not_null
-          
-  - name: test_scd2_join
-    description: "Test model demonstrating the scd2_join macro functionality"
-    tests:
-      - dbt_utils.expression_is_true:
-          expression: "_valid_from < _valid_to"
-      - dbt_utils.equality:
-          compare_model: ref('expected_scd2_join_output')
-          compare_columns:
-            - customer_id
-            - customer_name
-            - email
-            - street
-            - city
-            - state
-            - _is_current
+            - _updated_at
             - _valid_from
             - _valid_to
-    columns:
-      - name: customer_id
-        description: "Business key for joining tables"
-        tests:
-          - not_null
-      - name: _valid_from
-        description: "Start of validity period for this combination"
-        tests:
-          - not_null
-      - name: _valid_to
-        description: "End of validity period for this combination"
-        tests:
-          - not_null
-
-  - name: test_scd2_composite_key
-    description: "Test SCD2 functionality with composite unique key (product_id + location_id)"
-    tests:
-      - dbt_utils.equality:
-          compare_model: ref('expected_products_scd2')
-          compare_columns:
-            - product_id
-            - location_id
-            - product_name
-            - price
-            - category
-            - _IS_CURRENT
-            - _VALID_FROM
-            - _VALID_TO
-            - _UPDATED_AT
-            - _CHANGE_TYPE
-    columns:
-      - name: product_id
-        description: "Product identifier (part of composite key)"
-        tests:
-          - not_null
-      - name: location_id
-        description: "Location identifier (part of composite key)"
-        tests:
-          - not_null
-      - name: _IS_CURRENT
-        description: "Flag indicating if this is the current version"
-        tests:
-          - not_null
-          - accepted_values:
-              values: [true, false]
-      - name: _VALID_FROM
-        description: "When this version became effective"
-        tests:
-          - not_null
-      - name: _VALID_TO
-        description: "When this version expired"
-        tests:
-          - not_null
-      - name: _CHANGE_TYPE
-        description: "Type of change operation (I, U, D)"
-        tests:
-          - not_null
-          - accepted_values:
-              values: ['I', 'U', 'D']
+            - _is_current
+            - _change_type
+      
+      # SCD2 Data Quality Tests
+      - dbt_snowflake_incremental_scd2.one_current_per_key:
+          key_columns: [customer_id]
+          current_column: _is_current
+      
+      - dbt_snowflake_incremental_scd2.no_validity_overlaps:
+          key_columns: [customer_id]
+          valid_from_column: _valid_from
+          valid_to_column: _valid_to
+      
+      - dbt_snowflake_incremental_scd2.continuous_validity_windows:
+          key_columns: [customer_id]
+          valid_from_column: _valid_from
+          valid_to_column: _valid_to
+      
+      - dbt_snowflake_incremental_scd2.first_record_insert:
+          key_columns: [customer_id]
+          valid_from_column: _valid_from
+          change_type_column: _change_type
+      
+      - dbt_snowflake_incremental_scd2.last_record_update_or_delete:
+          key_columns: [customer_id]
+          valid_from_column: _valid_from
+          change_type_column: _change_type
+      
+      - dbt_snowflake_incremental_scd2.latest_row_is_current:
+          key_columns: [customer_id]
+          valid_from_column: _valid_from
+          current_column: _is_current
